@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Explorer · 用户与项目搜索器</title>
+<style>
+  /* ============ Material Design 基础变量 ============ */
+  :root {
+    --primary: #24292e;
+    --primary-light: #5c6166;
+    --primary-dark: #000100;
+    --accent: #0366d6;
+    --accent-light: #2188ff;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --text-primary: rgba(0,0,0,0.87);
+    --text-secondary: rgba(0,0,0,0.6);
+    --text-hint: rgba(0,0,0,0.38);
+    --divider: rgba(0,0,0,0.12);
+    --error: #d32f2f;
+    --shadow-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    --shadow-2: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+    --shadow-3: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+    --radius: 8px;
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ============ 顶部 App Bar ============ */
+  .app-bar {
+    background: var(--primary);
+    color: #fff;
+    padding: 18px 24px;
+    box-shadow: var(--shadow-2);
+    position: relative;
+    z-index: 10;
+  }
+  .app-bar h1 {
+    font-size: 20px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .app-bar .subtitle {
+    font-size: 13px;
+    opacity: 0.7;
+    margin-top: 4px;
+    font-weight: 400;
+  }
+  .gh-icon {
+    width: 28px; height: 28px;
+    fill: currentColor;
+  }
+
+  /* ============ 主容器 ============ */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 16px 80px;
+  }
+
+  /* ============ Tab 切换 ============ */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-radius: var(--radius) var(--radius) 0 0;
+    box-shadow: var(--shadow-1);
+    overflow: hidden;
+  }
+  .tab {
+    flex: 1;
+    padding: 16px 20px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    position: relative;
+    text-transform: none;
+    letter-spacing: 0.2px;
+  }
+  .tab:hover { background: rgba(0,0,0,0.04); }
+  .tab.active {
+    color: var(--accent);
+    background: #fff;
+  }
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+
+  /* ============ 搜索区 ============ */
+  .search-panel {
+    background: var(--surface);
+    padding: 24px;
+    box-shadow: var(--shadow-1);
+    border-radius: 0 0 var(--radius) var(--radius);
+    margin-bottom: 24px;
+  }
+  .search-row {
+    display: flex;
+    gap: 12px;
+  }
+  .input-wrap {
+    flex: 1;
+    position: relative;
+  }
+  .search-input {
+    width: 100%;
+    padding: 14px 16px 14px 48px;
+    font-size: 16px;
+    border: 2px solid var(--divider);
+    border-radius: var(--radius);
+    background: #fff;
+    color: var(--text-primary);
+    transition: var(--transition);
+    outline: none;
+    font-family: inherit;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(3,102,214,0.12);
+  }
+  .search-icon {
+    position: absolute;
+    left: 16px; top: 50%;
+    transform: translateY(-50%);
+    width: 20px; height: 20px;
+    fill: var(--text-hint);
+    pointer-events: none;
+  }
+  .btn {
+    padding: 0 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow-1);
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.3px;
+    font-family: inherit;
+  }
+  .btn:hover {
+    background: var(--accent-light);
+    box-shadow: var(--shadow-2);
+  }
+  .btn:active { box-shadow: var(--shadow-1); }
+  .btn:disabled {
+    background: var(--text-hint);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .hint-text {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-hint);
+  }
+  .hint-text code {
+    background: rgba(3,102,214,0.08);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+  }
+
+  /* ============ 状态提示 ============ */
+  .status-box {
+    background: var(--surface);
+    padding: 40px 24px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-1);
+    text-align: center;
+    color: var(--text-secondary);
+  }
+  .status-box.error {
+    border-left: 4px solid var(--error);
+    text-align: left;
+    padding: 20px 24px;
+  }
+  .status-box.error h3 {
+    color: var(--error);
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 4px solid rgba(3,102,214,0.15);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ============ 用户资料卡片 ============ */
+  .user-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-2);
+    overflow: hidden;
+    margin-bottom: 24px;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .user-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    padding: 32px 24px 24px;
+    color: #fff;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .user-avatar {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.3);
+    box-shadow: var(--shadow-2);
+    background: #fff;
+  }
+  .user-info { flex: 1; min-width: 220px; }
+  .user-name {
+    font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+  .user-login {
+    font-size: 16px;
+    opacity: 0.85;
+    margin-bottom: 8px;
+  }
+  .user-bio {
+    font-size: 14px;
+    opacity: 0.9;
+    line-height: 1.5;
+  }
+
+  .user-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--divider);
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .meta-item svg { width: 16px; height: 16px; fill: var(--text-hint); }
+  .meta-item a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .meta-item a:hover { text-decoration: underline; }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 20px 24px;
+    gap: 12px;
+  }
+  .stat {
+    text-align: center;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: var(--radius);
+  }
+  .stat-num {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--primary);
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+
+  /* ============ 仓库列表 ============ */
+  .section-title {
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title .count {
+    background: var(--divider);
+    color: var(--text-secondary);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .repo-list {
+    display: grid;
+    gap: 14px;
+  }
+  .repo-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-1);
+    padding: 18px 20px;
+    transition: var(--transition);
+    border-left: 4px solid transparent;
+  }
+  .repo-card:hover {
+    box-shadow: var(--shadow-2);
+    transform: translateY(-2px);
+    border-left-color: var(--accent);
+  }
+  .repo-title {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .repo-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .repo-name:hover { text-decoration: underline; }
+  .repo-visibility {
+    font-size: 11px;
+    padding: 2px 8px;
+    border: 1px solid var(--divider);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+  .repo-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .repo-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    align-items: center;
+  }
+  .repo-footer span { display: flex; align-items: center; gap: 4px; }
+  .repo-footer svg { width: 14px; height: 14px; fill: var(--text-hint); }
+  .lang-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* ============ 涟漪效果 ============ */
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.4);
+    transform: scale(0);
+    animation: ripple-anim 0.6s ease-out;
+    pointer-events: none;
+  }
+  @keyframes ripple-anim {
+    to { transform: scale(4); opacity: 0; }
+  }
+
+  /* ============ 工具栏（导出按钮） ============ */
+  .result-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .btn-export {
+    background: #fff;
+    color: var(--accent);
+    border: 1.5px solid var(--accent);
+    box-shadow: none;
+    padding: 8px 16px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-export:hover {
+    background: rgba(3,102,214,0.08);
+    border-color: var(--accent-light);
+    color: var(--accent-light);
+    box-shadow: var(--shadow-1);
+  }
+  .btn-export svg { width: 16px; height: 16px; fill: currentColor; }
+
+  /* ============ 底部帮助手风琴 ============ */
+  .help-accordion {
+    margin-top: 32px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-1);
+    overflow: hidden;
+  }
+  .help-toggle {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 18px 20px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: var(--transition);
+    font-family: inherit;
+  }
+  .help-toggle:hover { background: rgba(0,0,0,0.04); }
+  .help-toggle .chevron {
+    transition: transform 0.25s ease;
+    fill: var(--text-secondary);
+    width: 20px; height: 20px;
+  }
+  .help-accordion.open .help-toggle .chevron { transform: rotate(180deg); }
+  .help-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+    padding: 0 20px;
+  }
+  .help-accordion.open .help-content {
+    max-height: 900px;
+    padding-bottom: 20px;
+  }
+  .help-content h4 {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 16px 0 8px;
+    color: var(--primary);
+  }
+  .help-content h4:first-child { margin-top: 4px; }
+  .help-content ul { padding-left: 22px; }
+  .help-content li {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    line-height: 1.6;
+  }
+  .help-content code, .help-content kbd {
+    background: rgba(3,102,214,0.08);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    font-size: 12.5px;
+  }
+  .help-content kbd {
+    background: #eee;
+    color: #333;
+    border: 1px solid #ccc;
+    border-bottom-width: 2px;
+  }
+  .help-content .tag-list {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 8px;
+  }
+  .help-content .tag {
+    background: var(--bg);
+    border: 1px solid var(--divider);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* ============ 隐藏 ============ */
+  .hidden { display: none !important; }
+
+  /* ============ 响应式 ============ */
+  @media (max-width: 640px) {
+    .search-row { flex-direction: column; }
+    .btn { padding: 14px; }
+    .user-header { padding: 24px 16px 16px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .stat-num { font-size: 18px; }
+    .user-meta { padding: 14px 16px; gap: 10px; }
+    .container { padding: 16px 12px 60px; }
+  }
+
+  /* 页脚 */
+  .footer {
+    text-align: center;
+    color: var(--text-hint);
+    font-size: 12px;
+    margin-top: 32px;
+  }
+  .footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- ============ App Bar ============ -->
+<header class="app-bar">
+  <h1>
+    <svg class="gh-icon" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    GitHub Explorer
+  </h1>
+  <div class="subtitle">搜索 GitHub 用户资料与开源项目 · 数据来自 GitHub Public API</div>
+</header>
+
+<main class="container">
+
+  <!-- ============ Tab 切换 ============ -->
+  <div class="tabs">
+    <button class="tab active" data-tab="user">👤 用户搜索</button>
+    <button class="tab" data-tab="repo">📦 项目关键词搜索</button>
+  </div>
+
+  <!-- ============ 搜索面板 ============ -->
+  <div class="search-panel">
+    <!-- 用户搜索 -->
+    <div id="panel-user" class="search-mode">
+      <div class="search-row">
+        <div class="input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input id="user-input" class="search-input" type="text" placeholder="输入 GitHub 用户名，如：torvalds" autocomplete="off">
+        </div>
+        <button id="user-btn" class="btn">搜索用户</button>
+      </div>
+      <div class="hint-text">提示：试试 <code>torvalds</code>、<code>gaearon</code>、<code>yyx990803</code>、<code>tj</code></div>
+    </div>
+
+    <!-- 项目搜索 -->
+    <div id="panel-repo" class="search-mode hidden">
+      <div class="search-row">
+        <div class="input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input id="repo-input" class="search-input" type="text" placeholder="输入项目关键词，如：react chart" autocomplete="off">
+        </div>
+        <button id="repo-btn" class="btn">搜索项目</button>
+      </div>
+      <div class="hint-text">提示：试试 <code>react</code>、<code>vue admin</code>、<code>machine learning</code>、<code>tailwindcss</code></div>
+    </div>
+  </div>
+
+  <!-- ============ 结果区域 ============ -->
+  <div id="result-area">
+    <div class="status-box">
+      <div style="font-size:48px;margin-bottom:12px;">🔍</div>
+      <div>请在上方输入关键词开始搜索</div>
+    </div>
+  </div>
+
+  <!-- ============ 底部使用帮助（可折叠） ============ -->
+  <div class="help-accordion" id="help-accordion">
+    <button class="help-toggle" id="help-toggle">
+      <span>📖 使用帮助与常见问题</span>
+      <svg class="chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+    </button>
+    <div class="help-content">
+      <h4>🚀 快速开始</h4>
+      <ul>
+        <li>顶部两个标签页可切换 <strong>用户搜索</strong> 与 <strong>项目关键词搜索</strong>。</li>
+        <li>在输入框输入关键词后按 <kbd>Enter</kbd> 或点击右侧按钮即可搜索。</li>
+        <li>搜索结果卡片可直接点击仓库名/用户主页跳转 GitHub。</li>
+      </ul>
+
+      <h4>🔍 搜索技巧</h4>
+      <ul>
+        <li><strong>用户搜索</strong>：输入精确的 GitHub 用户名（区分大小写），如 <code>torvalds</code>。</li>
+        <li><strong>项目搜索</strong>：支持多关键词，如 <code>react admin</code>、<code>machine learning python</code>。</li>
+        <li>项目默认按 ⭐ stars 降序排列，最多展示 20 个结果。</li>
+      </ul>
+      <div class="tag-list">
+        <span class="tag">用户名示例</span>
+        <span class="tag">torvalds</span>
+        <span class="tag">gaearon</span>
+        <span class="tag">yyx990803</span>
+        <span class="tag">tj</span>
+        <span class="tag">sindresorhus</span>
+      </div>
+
+      <h4>💾 导出 CSV</h4>
+      <ul>
+        <li>搜索结果出现后，标题栏右侧会出现 <strong>「导出 CSV」</strong> 按钮。</li>
+        <li>导出的是<strong>当前显示的列表</strong>（用户搜索页：该用户热门仓库；项目搜索页：当前关键词结果）。</li>
+        <li>文件名包含关键词与导出时间，例如 <code>github-repos-react-20260617-1530.csv</code>。</li>
+        <li>CSV 使用 UTF-8 编码（含 BOM），可直接用 Excel / WPS / Google Sheets 打开，中文不乱码。</li>
+      </ul>
+
+      <h4>⚠️ 关于 API 限流</h4>
+      <ul>
+        <li>本应用使用 GitHub Public API，<strong>无需登录、无需 Token</strong>。</li>
+        <li>未认证状态下：<strong>每 IP 每小时最多 60 次请求</strong>（搜索接口另计 10 次/分钟）。</li>
+        <li>若提示「API 请求受限」，请等待几分钟后重试。</li>
+      </ul>
+
+      <h4>🔒 隐私说明</h4>
+      <ul>
+        <li>本应用<strong>无后端服务器</strong>，所有请求由你的浏览器直接发送到 GitHub。</li>
+        <li>不收集、不存储任何用户数据；导出的 CSV 仅保存到你本地。</li>
+        <li>适合部署到 GitHub Pages、html2web.com、Netlify、Vercel 等任意静态托管平台。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    数据来源：<a href="https://docs.github.com/en/rest" target="_blank" rel="noopener">GitHub REST API</a> · 未登录状态下每小时限 60 次请求
+  </div>
+</main>
+
+<script>
+/* ============================================================
+ * GitHub Explorer - 纯原生 JS 实现
+ * 使用 GitHub Public API（无需 Key）
+ * ============================================================ */
+
+const API = 'https://api.github.com';
+
+// 主流语言颜色映射（部分）
+const LANG_COLORS = {
+  JavaScript: '#f1e05a',
+  TypeScript: '#3178c6',
+  Python: '#3572A5',
+  Java: '#b07219',
+  'C++': '#f34b7d',
+  C: '#555555',
+  'C#': '#178600',
+  Go: '#00ADD8',
+  Rust: '#dea584',
+  Ruby: '#701516',
+  PHP: '#4F5D95',
+  Swift: '#F05138',
+  Kotlin: '#A97BFF',
+  Dart: '#00B4AB',
+  HTML: '#e34c26',
+  CSS: '#563d7c',
+  Vue: '#41b883',
+  Shell: '#89e051',
+  Lua: '#000080',
+  Scala: '#c22d40',
+  Elixir: '#6e4a7e',
+  Haskell: '#5e5086',
+  Clojure: '#db5855',
+  'Jupyter Notebook': '#DA5B0B',
+  Dockerfile: '#384d54',
+  Makefile: '#427819',
+};
+
+// ============ DOM 元素 ============
+const $ = id => document.getElementById(id);
+const resultArea = $('result-area');
+const userInput = $('user-input');
+const repoInput = $('repo-input');
+const userBtn = $('user-btn');
+const repoBtn = $('repo-btn');
+
+// 最近一次搜索的仓库数据 + 关键词（供 CSV 导出使用）
+let lastRepos = [];
+let lastQuery = '';
+
+// ============ Tab 切换 ============
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const mode = tab.dataset.tab;
+    document.querySelectorAll('.search-mode').forEach(p => p.classList.add('hidden'));
+    $(`panel-${mode}`).classList.remove('hidden');
+    // 重置结果区
+    resetResult();
+    // 聚焦输入框
+    setTimeout(() => ($(`${mode}-input`)).focus(), 50);
+  });
+});
+
+// ============ 工具函数 ============
+function resetResult() {
+  resultArea.innerHTML = `
+    <div class="status-box">
+      <div style="font-size:48px;margin-bottom:12px;">🔍</div>
+      <div>请在上方输入关键词开始搜索</div>
+    </div>`;
+  lastRepos = [];   // 清空缓存
+}
+
+function showLoading(text = '加载中...') {
+  resultArea.innerHTML = `
+    <div class="status-box">
+      <div class="spinner"></div>
+      <div>${text}</div>
+    </div>`;
+}
+
+function showError(title, message) {
+  resultArea.innerHTML = `
+    <div class="status-box error">
+      <h3>⚠️ ${title}</h3>
+      <div>${message}</div>
+    </div>`;
+}
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function formatNumber(n) {
+  if (n == null) return '0';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
+function timeAgo(dateStr) {
+  const d = new Date(dateStr);
+  const diff = Date.now() - d.getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days < 1) return '今天';
+  if (days < 30) return `${days} 天前`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} 个月前`;
+  return `${Math.floor(months / 12)} 年前`;
+}
+
+function getLangColor(lang) {
+  return LANG_COLORS[lang] || '#cccccc';
+}
+
+// 涟漪效果
+function attachRipple(btn) {
+  btn.addEventListener('click', function(e) {
+    const rect = this.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    const size = Math.max(rect.width, rect.height);
+    ripple.className = 'ripple';
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+    ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+    this.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+  });
+}
+document.querySelectorAll('.btn').forEach(attachRipple);
+
+// ============ API 请求封装 ============
+async function ghFetch(url) {
+  const res = await fetch(url, {
+    headers: { 'Accept': 'application/vnd.github+json' }
+  });
+  if (res.status === 403) {
+    const remaining = res.headers.get('X-RateLimit-Remaining');
+    const reset = res.headers.get('X-RateLimit-Reset');
+    let msg = 'GitHub API 请求频率受限（未登录状态每小时 60 次）。';
+    if (reset) {
+      const mins = Math.max(1, Math.ceil((reset * 1000 - Date.now()) / 60000));
+      msg += ` 请约 ${mins} 分钟后再试。`;
+    }
+    throw new Error('RATE_LIMIT:' + msg);
+  }
+  if (res.status === 404) throw new Error('NOT_FOUND');
+  if (!res.ok) throw new Error('HTTP_' + res.status);
+  return res.json();
+}
+
+// ============ 用户搜索 ============
+async function searchUser() {
+  const username = userInput.value.trim();
+  if (!username) {
+    userInput.focus();
+    return;
+  }
+  showLoading(`正在查询用户 @${username} ...`);
+  try {
+    const user = await ghFetch(`${API}/users/${encodeURIComponent(username)}`);
+    // 并行获取该用户热门仓库（按 stars 排序，取前 6）
+    let repos = [];
+    try {
+      repos = await ghFetch(`${API}/users/${encodeURIComponent(username)}/repos?sort=stars&per_page=6&type=owner`);
+    } catch (e) { /* 忽略仓库错误 */ }
+    renderUser(user, repos);
+  } catch (err) {
+    handleSearchError(err, `用户 @${username}`);
+  }
+}
+
+function renderUser(user, repos) {
+  // 缓存仓库数据供 CSV 导出
+  lastRepos = repos || [];
+  lastQuery = user.login;
+
+  const html = `
+    <div class="user-card">
+      <div class="user-header">
+        <img class="user-avatar" src="${escapeHtml(user.avatar_url)}" alt="avatar" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23ccc%22 width=%22100%22 height=%22100%22/></svg>'">
+        <div class="user-info">
+          <div class="user-name">${escapeHtml(user.name || user.login)}</div>
+          <div class="user-login">@${escapeHtml(user.login)}</div>
+          ${user.bio ? `<div class="user-bio">${escapeHtml(user.bio)}</div>` : ''}
+        </div>
+      </div>
+      <div class="user-meta">
+        ${user.company ? `<span class="meta-item"><svg viewBox="0 0 16 16"><path d="M1.5 14h13c.83 0 1.5-.67 1.5-1.5V5.5C16 4.67 15.33 4 14.5 4H10V2.5C10 1.67 9.33 1 8.5 1h-1C6.67 1 6 1.67 6 2.5V4H1.5C.67 4 0 4.67 0 5.5v7C0 13.33.67 14 1.5 14zM7 2.5c0-.28.22-.5.5-.5h1c.28 0 .5.22.5.5V4H7V2.5z"/></svg>${escapeHtml(user.company)}</span>` : ''}
+        ${user.location ? `<span class="meta-item"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6 0C2.69 0 0 2.5 0 5.5C0 10.02 6 16 6 16s6-5.98 6-10.5C12 2.5 9.31 0 6 0zm0 14.55C4.14 12.52 1 8.44 1 5.5C1 3.02 3.25 1 6 1c1.34 0 2.61.48 3.56 1.36.92.86 1.44 1.97 1.44 3.14 0 2.94-3.14 7.02-5 9.05zM8 5.5c0-1.11-.89-2-2-2-1.11 0-2 .89-2 2 0 1.11.89 2 2 2 1.11 0 2-.89 2-2z"/></svg>${escapeHtml(user.location)}</span>` : ''}
+        ${user.blog ? `<span class="meta-item"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3.5 1.75a.25.25 0 01.25-.25h3a.75.75 0 000 1.5h.5a.75.75 0 000-1.5h-3a.25.25 0 00-.25.25v12.5c0 .14.11.25.25.25h5.5a.75.75 0 000 1.5h-5.5A1.75 1.75 0 012 14.25V3.75a.75.75 0 011.5 0z"/><path d="M4 8a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5A.75.75 0 014 8z"/></svg><a href="${ensureProtocol(user.blog)}" target="_blank" rel="noopener">${escapeHtml(user.blog)}</a></span>` : ''}
+        ${user.email ? `<span class="meta-item"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M0 4v8c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1H1c-.55 0-1 .45-1 1zm13 0L7 9 1 4h12zM1 5.5l4 3-4 3v-6zM2 12l3.5-3L7 11l1.5-2L12 12H2z"/></svg>${escapeHtml(user.email)}</span>` : ''}
+        ${user.twitter_username ? `<span class="meta-item">🐦 @${escapeHtml(user.twitter_username)}</span>` : ''}
+        <span class="meta-item">📅 加入于 ${new Date(user.created_at).toLocaleDateString('zh-CN')}</span>
+        <span class="meta-item"><a href="${user.html_url}" target="_blank" rel="noopener">在 GitHub 上查看 ↗</a></span>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-num">${formatNumber(user.public_repos)}</div><div class="stat-label">仓库</div></div>
+        <div class="stat"><div class="stat-num">${formatNumber(user.followers)}</div><div class="stat-label">粉丝</div></div>
+        <div class="stat"><div class="stat-num">${formatNumber(user.following)}</div><div class="stat-label">关注中</div></div>
+        <div class="stat"><div class="stat-num">${formatNumber(user.public_gists)}</div><div class="stat-label">Gists</div></div>
+      </div>
+    </div>
+    ${repos && repos.length ? `
+      <div class="result-toolbar">
+        <div class="section-title" style="margin-bottom:0;">⭐ 热门仓库 <span class="count">${repos.length}</span></div>
+        ${renderExportButton('user')}
+      </div>
+      <div class="repo-list">
+        ${repos.map(renderRepoCard).join('')}
+      </div>
+    ` : '<div class="status-box">该用户暂无公开仓库</div>'}
+  `;
+  resultArea.innerHTML = html;
+  bindExportButton();
+}
+
+// ============ 项目搜索 ============
+async function searchRepos() {
+  const q = repoInput.value.trim();
+  if (!q) {
+    repoInput.focus();
+    return;
+  }
+  showLoading(`正在搜索项目 "${q}" ...`);
+  try {
+    const data = await ghFetch(`${API}/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=20`);
+    if (!data.items || data.items.length === 0) {
+      resultArea.innerHTML = `
+        <div class="status-box">
+          <div style="font-size:42px;margin-bottom:12px;">🤷</div>
+          <div>未找到与 "<strong>${escapeHtml(q)}</strong>" 相关的项目</div>
+          <div style="margin-top:8px;font-size:13px;color:var(--text-hint);">试试其他关键词，或检查拼写</div>
+        </div>`;
+      return;
+    }
+    renderRepos(data, q);
+  } catch (err) {
+    handleSearchError(err, `项目 "${q}"`);
+  }
+}
+
+function renderRepos(data, q) {
+  // 缓存供 CSV 导出
+  lastRepos = data.items || [];
+  lastQuery = q;
+
+  const html = `
+    <div class="result-toolbar">
+      <div class="section-title" style="margin-bottom:0;">
+        📦 搜索结果 <span class="count">共 ${formatNumber(data.total_count)} 个 · 显示前 ${data.items.length}</span>
+      </div>
+      ${renderExportButton('repo')}
+    </div>
+    <div class="repo-list">
+      ${data.items.map(renderRepoCard).join('')}
+    </div>
+  `;
+  resultArea.innerHTML = html;
+  bindExportButton();
+}
+
+// ============ 仓库卡片渲染 ============
+function renderRepoCard(repo) {
+  const lang = repo.language;
+  return `
+    <div class="repo-card">
+      <div class="repo-title">
+        <a class="repo-name" href="${repo.html_url}" target="_blank" rel="noopener">${escapeHtml(repo.name)}</a>
+        <span class="repo-visibility">${escapeHtml(repo.visibility || (repo.private ? 'Private' : 'Public'))}</span>
+        ${repo.fork ? '<span class="repo-visibility">Forked</span>' : ''}
+        ${repo.archived ? '<span class="repo-visibility">Archived</span>' : ''}
+      </div>
+      ${repo.description ? `<div class="repo-desc">${escapeHtml(repo.description)}</div>` : '<div class="repo-desc" style="opacity:0.5;font-style:italic;">暂无描述</div>'}
+      <div class="repo-footer">
+        ${lang ? `<span><span class="lang-dot" style="background:${getLangColor(lang)}"></span>${escapeHtml(lang)}</span>` : ''}
+        <span>
+          <svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M14 6l-4.9-.64L7 1 4.9 5.36 0 6l3.6 3.26L2.67 14 7 11.67 11.33 14l-.93-4.74L14 6z"/></svg>
+          ${formatNumber(repo.stargazers_count)}
+        </span>
+        <span>
+          <svg viewBox="0 0 10 16"><path fill-rule="evenodd" d="M8 1a1.993 1.993 0 00-1 3.72V6L5 8 3 6V4.72A1.993 1.993 0 002 1a1.993 1.993 0 00-1 3.72V6.5l3 3v1.78A1.993 1.993 0 007 12a1.993 1.993 0 00-1-3.72V6.5l3-3V4.72A1.993 1.993 0 008 1zM2 4.2C1.34 4.2.8 3.66.8 3c0-.66.54-1.2 1.2-1.2.66 0 1.2.54 1.2 1.2 0 .66-.54 1.2-1.2 1.2zm3 10c-.66 0-1.2-.54-1.2-1.2 0-.66.54-1.2 1.2-1.2.66 0 1.2.54 1.2 1.2 0 .66-.54 1.2-1.2 1.2zm3-10c-.66 0-1.2-.54-1.2-1.2 0-.66.54-1.2 1.2-1.2.66 0 1.2.54 1.2 1.2 0 .66-.54 1.2-1.2 1.2z"/></svg>
+          ${formatNumber(repo.forks_count)}
+        </span>
+        <span>
+          <svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 8c3.314 0 6-2 6-5.5 0-.916-.171-1.792-.469-2.586C11.469 1.547 10 4 10 4s.316-1.789-.952-2.584C7.965 2.158 6 3.797 6 5.5c0 0-1.5-1.5-2.5-3-.394.515-.766 1.21-.766 1.991C2.734 6.5 5 8 7 8zM8.564 3.956c.282-.47.452-.99.452-1.956 0-1.654-1.346-3-3-3S3 .346 3 2c0 .966.17 1.486.452 1.956C2.95 4.275 2.272 5.18 2 6c1.657 0 3 .895 3 2 0 .829-.336 1.579-.879 2.121C5.5 10.5 6 11 6 12c0 1.105.895 2 2 2s2-.895 2-2c0-1 0-1.5 0-2.5C10 8.5 9.5 8 9.121 7.121 8.579 6.579 8 6.329 8 5.5c0-1.105 1.343-1.5 3-1.5z"/></svg>
+          ${formatNumber(repo.watchers_count)}
+        </span>
+        <span>📅 更新于 ${timeAgo(repo.updated_at)}</span>
+        ${repo.license && repo.license.spdx_id ? `<span>📜 ${escapeHtml(repo.license.spdx_id)}</span>` : ''}
+        ${repo.homepage ? `<span><a href="${ensureProtocol(repo.homepage)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">🌐 主页 ↗</a></span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function ensureProtocol(url) {
+  if (!url) return '#';
+  url = escapeHtml(url);
+  if (/^https?:\/\//i.test(url)) return url;
+  return 'https://' + url;
+}
+
+// ============ CSV 导出 ============
+function renderExportButton() {
+  return `
+    <button class="btn btn-export" id="export-btn">
+      <svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M7.47 10.78a.75.75 0 001.06 0l3.75-3.75a.75.75 0 00-1.06-1.06L9.5 8.69V1.75a.75.75 0 00-1.5 0v6.94L6.28 5.97a.75.75 0 00-1.06 1.06l3.75 3.75zM3.75 13a.75.75 0 000 1.5h8.5a.75.75 0 000-1.5h-8.5z"/></svg>
+      导出 CSV
+    </button>`;
+}
+
+function bindExportButton() {
+  const btn = $('export-btn');
+  if (btn) {
+    attachRipple(btn);
+    btn.addEventListener('click', exportCurrentReposCsv);
+  }
+}
+
+// 将单个字段转成 CSV 安全格式（含引号、逗号、换行符的转义）
+function csvField(value) {
+  if (value == null) return '';
+  const s = String(value);
+  // 含 ", \n, \r, " 之一需用双引号包裹并把内部 " 转义为 ""
+  if (/[",\n\r]/.test(s)) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function exportCurrentReposCsv() {
+  if (!lastRepos || lastRepos.length === 0) return;
+
+  const headers = [
+    'name', 'full_name', 'description', 'url',
+    'language', 'stars', 'forks', 'watchers',
+    'open_issues', 'license', 'is_fork', 'is_archived',
+    'created_at', 'updated_at', 'homepage'
+  ];
+  const headerLabels = [
+    '仓库名', '完整路径', '描述', '链接',
+    '语言', 'Stars', 'Forks', 'Watchers',
+    'Open Issues', '许可证', '是否Fork', '是否归档',
+    '创建时间', '更新时间', '主页'
+  ];
+
+  const lines = [headerLabels.map(csvField).join(',')];
+
+  lastRepos.forEach(r => {
+    const row = [
+      r.name,
+      r.full_name,
+      r.description,
+      r.html_url,
+      r.language || '',
+      r.stargazers_count,
+      r.forks_count,
+      r.watchers_count,
+      r.open_issues_count,
+      (r.license && r.license.spdx_id) ? r.license.spdx_id : '',
+      r.fork ? '是' : '否',
+      r.archived ? '是' : '否',
+      r.created_at,
+      r.updated_at,
+      r.homepage || ''
+    ];
+    lines.push(row.map(csvField).join(','));
+  });
+
+  // UTF-8 BOM，确保 Excel 正确识别中文编码
+  const csvContent = '\ufeff' + lines.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+  // 文件名：github-repos-{关键词}-{时间戳}.csv
+  const ts = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}`;
+  const safeQuery = (lastQuery || 'result').replace(/[^\w\u4e00-\u9fa5.-]/g, '_').slice(0, 40);
+  const filename = `github-repos-${safeQuery}-${stamp}.csv`;
+
+  // 触发下载
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ============ 错误统一处理 ============
+function handleSearchError(err, target) {
+  const msg = err.message || '';
+  if (msg.startsWith('RATE_LIMIT')) {
+    showError('API 请求受限', msg.replace('RATE_LIMIT:', ''));
+  } else if (msg === 'NOT_FOUND') {
+    showError('未找到结果', `没有找到 ${target}，请检查名称拼写或大小写后重试。`);
+  } else if (msg.startsWith('HTTP_')) {
+    showError('服务器错误', `GitHub 返回错误（${msg.replace('HTTP_', 'HTTP ')}），请稍后重试。`);
+  } else {
+    showError('请求失败', `网络错误或无法连接 GitHub API。${msg}`);
+  }
+}
+
+// ============ 事件绑定 ============
+userBtn.addEventListener('click', searchUser);
+repoBtn.addEventListener('click', searchRepos);
+userInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchUser(); });
+repoInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchRepos(); });
+
+// 帮助手风琴展开/收起
+const helpAccordion = $('help-accordion');
+$('help-toggle').addEventListener('click', () => {
+  helpAccordion.classList.toggle('open');
+});
+
+// 初始聚焦
+userInput.focus();
+</script>
+
+</body>
+</html>
